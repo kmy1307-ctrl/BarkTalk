@@ -27,9 +27,9 @@
       tips: ['짖는 동안엔 반응하지 말고, 조용해지는 순간 놀이를 시작해요.', '짧은 놀이로 에너지를 먼저 풀어 주세요.', '"앉아"처럼 아는 동작을 시키고 해내면 칭찬해 주세요.']
     },
     demand: {
-      title: '원하는 게 있어요',
-      desc: '짧고 또렷하게 반복되는 요구 짖음이에요. 보호자를 보며 짖는 경우가 많아요.',
-      tips: ['짖을 때 바로 주면 "짖으면 생긴다"고 배워요. 조용해지면 주세요.', '밥과 간식 시간을 일정하게 지켜 주세요.', '"기다려" 훈련으로 기다리면 받는다는 걸 알려 주세요.']
+      title: '원해요 · 졸라요',
+      desc: '간식, 놀이, 관심처럼 원하는 걸 달라고 조르는 소리에 가까워요. 보호자를 보며 짖다가 낑낑거리기를 되풀이하는 경우가 많아요.',
+      tips: ['짖거나 낑낑댈 때 바로 주면 "조르면 생긴다"고 배워요. 조용해진 순간에 주세요.', '"앉아"나 "기다려"를 시키고, 해내면 그때 간식이나 놀이로 보상해 주세요.', '간식·밥·놀이 시간을 일정하게 정해 두면 조르는 횟수가 줄어요.']
     },
     threat: {
       title: '불편해요 · 다가오지 마세요',
@@ -164,17 +164,21 @@
     var s = { alert: 1, anxious: 1, play: 1, demand: 1, threat: 0.6 };
     if (f.pitch) {
       if (f.pitch < 400) { s.threat += 1.2; s.alert += 1; }
-      else if (f.pitch > 750) { s.play += 1; s.anxious += 0.8; }
+      else if (f.pitch > 750) { s.play += 1; s.demand += 0.4; s.anxious += 0.5; }
       else { s.alert += 0.5; s.demand += 0.5; }
     }
     if (f.rate > 2) { s.play += 1; s.alert += 0.8; }
+    else if (f.rate >= 0.9) { s.demand += 0.8; } // 보통 빠르기로 되풀이 = 조르기에 흔함
     else if (f.rate > 0 && f.rate < 0.9) { s.anxious += 0.8; s.demand += 0.4; }
     if (f.meanDur > 0.45) s.anxious += 1;
     if (f.meanDur > 0 && f.meanDur < 0.25 && f.regularity > 0.6) s.demand += 1;
     if (f.count >= 6) s.alert += 0.5;
     if (y) {
       s.threat += y.growl.max * 4;
-      s.anxious += y.whimper.max * 4 + y.howl.max * 3;
+      // 낑낑 소리: 짖음과 섞여 되풀이되면 조르기, 짖음 없이 낑낑/하울링 위주면 불안
+      var begging = f.count >= 3 && y.howl.max < 0.3;
+      s.demand += y.whimper.max * (begging ? 4 : 1.5);
+      s.anxious += y.whimper.max * (begging ? 1.5 : 3) + y.howl.max * 3;
       s.play += y.yip.max * 2;
     }
     var prior = SITUATION_PRIOR[situation];
