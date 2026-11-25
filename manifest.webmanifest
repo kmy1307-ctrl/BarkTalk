@@ -1,0 +1,28 @@
+{
+  "name": "BarkTalk - 강아지 짖음 통역",
+  "short_name": "BarkTalk",
+  "description": "강아지 짖음 소리로 기분을 추정해 주는 무료 앱",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FFF8F1",
+  "theme_color": "#FFC83D",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BarkTalk</title>
+<meta name="description" content="강아지 짖음 소리로 기분을 추정해 주는 무료 앱">
+<meta name="theme-color" content="#FFC83D">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <button id="back" class="icon-btn" aria-label="뒤로" hidden>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <div class="brand"><img src="icon.svg" alt="" width="26" height="26">BarkTalk</div>
+  <span class="badge">무료</span>
+</header>
+
+<main>
+  <!-- 첫 화면 -->
+  <section id="screen-home" class="screen">
+    <h1>우리 강아지,<br>지금 뭐라고 짖는 걸까요?</h1>
+    <p class="sub">짖는 소리를 들려주면 기분과 원하는 것을 추정해 드려요. 분석은 내 폰 안에서만 이뤄져요.</p>
+    <button id="go-audio" class="big primary">
+      <span class="big-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg></span>
+      <span><strong>음성으로 빠르게</strong><small>짖음 소리만 듣고 몇 초 만에 분석</small></span>
+    </button>
+    <button class="big outline" disabled>
+      <span class="big-icon soft"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3z"/></svg></span>
+      <span><strong>영상으로 정밀하게</strong><small>준비 중 · 다음 업데이트</small></span>
+    </button>
+    <div class="card" id="history-card" hidden>
+      <strong>최근 분석</strong>
+      <ul id="history"></ul>
+    </div>
+    <p class="fine">결과는 참고용 추정이에요. 짖음만으로 뜻을 정확히 알 수는 없어요.</p>
+  </section>
+
+  <!-- 업로드 -->
+  <section id="screen-upload" class="screen" hidden>
+    <span class="eyebrow">음성 빠른 분석</span>
+    <h2>짖는 소리를 들려주세요</h2>
+    <div class="drop">
+      <div id="input-empty">
+        <button id="rec" class="rec" aria-label="녹음 시작">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>
+        </button>
+        <span id="rec-label" class="rec-label">눌러서 녹음 (최대 10초)</span>
+        <label class="file-btn">음성 파일 고르기<input id="file" type="file" accept="audio/*"></label>
+      </div>
+      <div id="input-ready" class="ready" hidden>
+        <span class="ok"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg></span>
+        <span class="grow"><strong id="input-name">녹음 완료</strong><small id="input-meta"></small></span>
+        <button id="clear" class="text-btn">다시</button>
+      </div>
+      <audio id="player" controls hidden></audio>
+    </div>
+    <fieldset class="chips-wrap">
+      <legend>어떤 상황이었나요? <small>(선택)</small></legend>
+      <div class="chips" id="situations"></div>
+    </fieldset>
+    <button id="analyze" class="cta" disabled>분석하기</button>
+    <p id="error" class="error" role="alert" hidden></p>
+  </section>
+
+  <!-- 분석 중 -->
+  <section id="screen-analyzing" class="screen center" hidden>
+    <div class="pulse"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 12h2"/><path d="M7 8v8"/><path d="M11 5v14"/><path d="M15 9v6"/><path d="M19 7v10"/></svg></div>
+    <h2>짖음 소리를 듣는 중</h2>
+    <p class="sub" id="analyzing-step">음높이, 짖는 간격, 반복 횟수를 살펴보고 있어요. 소리는 폰 밖으로 나가지 않아요.</p>
+  </section>
+
+  <!-- 결과 -->
+  <section id="screen-result" class="screen" hidden>
+    <div class="card">
+      <span class="eyebrow">음성 빠른 분석 결과</span>
+      <div class="result-head"><h2 id="r-title"></h2><span id="r-pct" class="pct"></span></div>
+      <p id="r-desc" class="sub"></p>
+      <div class="bar"><div id="r-bar"></div></div>
+      <small class="fine">확신도 = 앱이 얼마나 확신하는지예요. 정답일 확률은 아니에요.</small>
+    </div>
+    <div class="card"><strong>다른 가능성</strong><div id="r-others"></div></div>
+    <div class="card"><strong>들린 소리</strong><p id="r-heard" class="sub"></p></div>
+    <div class="card"><strong>이렇게 해 보세요</strong><ol id="r-tips" class="tips"></ol></div>
+    <div class="feedback">
+      <strong id="fb-q">이 결과가 맞았나요?</strong>
+      <div class="two">
+        <button id="fb-yes" class="fb">맞았어요</button>
+        <button id="fb-no" class="fb">틀렸어요</button>
+      </div>
+    </div>
+    <button id="restart" class="cta dark">다시 분석하기</button>
+    <p class="fine">참고용 추정이에요. 평소와 다른 짖음이나 행동이 계속되면 수의사와 상담하세요.</p>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js" defer></script>
+<script src="analyzer.js" defer></script>
+<script src="app.js" defer></script>
+</body>
+</html>
