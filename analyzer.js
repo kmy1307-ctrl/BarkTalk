@@ -1,7 +1,7 @@
 // BarkTalk 분석기: 모든 계산은 브라우저(기기) 안에서만 실행됩니다.
 // 1) YAMNet(구글 공개 소리 분류 모델)으로 짖음/으르렁/낑낑/하울링 구분
 // 2) 직접 계산한 소리 특징(음높이, 짖는 횟수·간격·길이)
-// 3) 규칙표 + 사용자가 고른 상황으로 의미 후보와 확신도 추정
+// 3) emotions.js의 표현 목록(음성 46개·영상 46개) + 상황·시간으로 후보와 확신도 추정
 (function () {
   'use strict';
 
@@ -9,36 +9,6 @@
   var YAMNET_URL = 'https://tfhub.dev/google/tfjs-model/yamnet/tfjs/1';
   // AudioSet/YAMNet 클래스 번호
   var CLS = { dog: 69, bark: 70, yip: 71, howl: 72, bowwow: 73, growl: 74, whimper: 75 };
-
-  var MEANINGS = {
-    alert: {
-      title: '경계해요',
-      desc: '낯선 소리나 사람을 알리고 있어요. 낮고 반복되는 짖음에서 자주 보여요.',
-      tips: ['차분한 목소리로 이름을 불러 주세요.', '문에서 떨어진 곳으로 불러 앉게 한 뒤 간식으로 보상해요.', '소리를 질러 혼내면 같이 짖는 것으로 느껴 더 짖을 수 있어요.']
-    },
-    anxious: {
-      title: '외로워요 · 불안해요',
-      desc: '보호자를 찾거나 불안할 때 나는 소리에 가까워요. 높고 끊기는 짖음, 낑낑거림, 하울링이 섞여요.',
-      tips: ['외출 전 10~15분은 조용히 지내고 인사는 짧게 해 주세요.', '노즈워크 장난감처럼 혼자 할 거리를 남겨 주세요.', '매일 길게 이어지면 분리불안일 수 있어 전문가와 상의해 보세요.']
-    },
-    play: {
-      title: '신나요 · 놀고 싶어요',
-      desc: '높고 빠르게 이어지는 짖음이에요. 기대감이나 즐거움을 표현할 때 흔해요.',
-      tips: ['짖는 동안엔 반응하지 말고, 조용해지는 순간 놀이를 시작해요.', '짧은 놀이로 에너지를 먼저 풀어 주세요.', '"앉아"처럼 아는 동작을 시키고 해내면 칭찬해 주세요.']
-    },
-    demand: {
-      title: '원해요 · 졸라요',
-      desc: '간식, 놀이, 관심처럼 원하는 걸 달라고 조르는 소리에 가까워요. 보호자를 보며 짖다가 낑낑거리기를 되풀이하는 경우가 많아요.',
-      tips: ['짖거나 낑낑댈 때 바로 주면 "조르면 생긴다"고 배워요. 조용해진 순간에 주세요.', '"앉아"나 "기다려"를 시키고, 해내면 그때 간식이나 놀이로 보상해 주세요.', '간식·밥·놀이 시간을 일정하게 정해 두면 조르는 횟수가 줄어요.']
-    },
-    threat: {
-      title: '불편해요 · 다가오지 마세요',
-      desc: '낮은 짖음과 으르렁거림이 섞여 있어요. 무언가가 불편하거나 위협으로 느껴질 때 나와요.',
-      tips: ['억지로 다가가거나 만지지 말고 거리를 두세요.', '무엇 때문에 그러는지(사람, 다른 개, 물건) 원인을 치워 주세요.', '자주 반복되면 행동 전문가나 수의사와 상담하세요.']
-    }
-  };
-
-  var SITUATION_PRIOR = { bell: 'alert', alone: 'anxious', walk: 'play', food: 'demand' };
 
   var modelPromise = null;
   function loadModel() {
@@ -160,44 +130,47 @@
     });
   }
 
-  function score(f, y, situation) {
-    var s = { alert: 1, anxious: 1, play: 1, demand: 1, threat: 0.6 };
-    if (f.pitch) {
-      if (f.pitch < 400) { s.threat += 1.2; s.alert += 1; }
-      else if (f.pitch > 750) { s.play += 1; s.demand += 0.4; s.anxious += 0.5; }
-      else { s.alert += 0.5; s.demand += 0.5; }
-    }
-    if (f.rate > 2) { s.play += 1; s.alert += 0.8; }
-    else if (f.rate >= 0.9) { s.demand += 0.8; } // 보통 빠르기로 되풀이 = 조르기에 흔함
-    else if (f.rate > 0 && f.rate < 0.9) { s.anxious += 0.8; s.demand += 0.4; }
-    if (f.meanDur > 0.45) s.anxious += 1;
-    if (f.meanDur > 0 && f.meanDur < 0.25 && f.regularity > 0.6) s.demand += 1;
-    if (f.count >= 6) s.alert += 0.5;
-    if (y) {
-      s.threat += y.growl.max * 4;
-      // 낑낑 소리: 짖음과 섞여 되풀이되면 조르기, 짖음 없이 낑낑/하울링 위주면 불안
-      var begging = f.count >= 3 && y.howl.max < 0.3;
-      s.demand += y.whimper.max * (begging ? 4 : 1.5);
-      s.anxious += y.whimper.max * (begging ? 1.5 : 3) + y.howl.max * 3;
-      s.play += y.yip.max * 2;
-    }
-    var prior = SITUATION_PRIOR[situation];
-    if (prior) s[prior] += 2;
-    var keys = Object.keys(s);
-    var sq = keys.map(function (k) { return s[k] * s[k]; });
-    var tot = sq.reduce(function (a, b) { return a + b; }, 0);
-    var ranked = keys.map(function (k, i) { return { key: k, p: sq[i] / tot }; })
-      .sort(function (a, b) { return b.p - a.p; });
-    // 화면용 숫자: 1순위는 30~85% 사이로 제한(과신 방지), 나머지 두 후보에 비율대로 분배
-    var top = Math.round(Math.min(0.85, Math.max(0.3, ranked[0].p * 1.6)) * 100);
-    var rest = 100 - top, base = ranked[1].p + ranked[2].p;
-    var p2 = Math.round(rest * ranked[1].p / base);
-    return [
-      { key: ranked[0].key, pct: top },
-      { key: ranked[1].key, pct: p2 },
-      { key: ranked[2].key, pct: rest - p2 }
-    ];
+  function clamp01(v) { return Math.max(0, Math.min(1, v)); }
+
+  // 소리 특징 + 상황 + 시간 → 신호(0~1). emotions.js의 가중치 이름과 같습니다.
+  function contextSignals(situation, date) {
+    var sig = {};
+    if (situation) sig[situation] = 1;
+    var h = (date || new Date()).getHours();
+    if ((h >= 6 && h <= 9) || (h >= 17 && h <= 20)) sig.meal = 1;
+    if (h >= 22 || h <= 5) sig.late = 1;
+    return sig;
   }
+
+  function audioSignals(f, y) {
+    var sig = {};
+    if (f.pitch) {
+      if (f.pitch < 400) sig.low = 1;
+      else if (f.pitch > 750) sig.high = 1;
+      else sig.mid = 1;
+      if (f.pitch > 1000) sig.vhigh = 1;
+    }
+    if (f.rate > 2) sig.fast = 1;
+    else if (f.rate >= 0.9) sig.med = 1;
+    else if (f.rate > 0) sig.slow = 1;
+    if (f.meanDur > 0.45) sig.long = 1;
+    else if (f.meanDur > 0 && f.meanDur < 0.25) sig.short = 1;
+    if (f.regularity > 0.6) sig.regular = 1;
+    if (f.count >= 6) sig.many = 1;
+    if (f.count > 0 && f.count <= 2) sig.few = 1;
+    if (f.count === 1) sig.one = 1;
+    if (f.loudness > 0.5) sig.loud = 1;
+    if (f.loudness > 0 && f.loudness < 0.08) sig.quiet = 1;
+    if (y) {
+      sig.growl = clamp01(y.growl.max * 2);
+      sig.whimper = clamp01(y.whimper.max * 2);
+      sig.howl = clamp01(y.howl.max * 2);
+      sig.yip = clamp01(y.yip.max * 2);
+    }
+    return sig;
+  }
+
+  function merge(a, b) { var o = {}; for (var k in a) o[k] = a[k]; for (var j in b) o[j] = Math.max(o[j] || 0, b[j]); return o; }
 
   function heardText(f, y) {
     var parts = [];
@@ -214,25 +187,63 @@
     return parts.join(' · ');
   }
 
-  async function analyze(blob, situation) {
+  // 소리만 읽어 특징을 돌려줍니다 (영상에서도 사용)
+  async function listen(blob) {
     var x = await decodeTo16k(blob);
     var f = features(x);
     var y = null;
     try { y = await classify(x); } catch (e) { console.warn('[BarkTalk] 분류 실패', e); }
     var dogHeard = y ? y.dog > 0.1 : f.count > 0;
-    if (!dogHeard || f.count === 0) {
-      return { noBark: true, model: !!y };
-    }
-    var ranked = score(f, y, situation);
+    return { f: f, y: y, bark: dogHeard && f.count > 0 };
+  }
+
+  function pack(ranked, heard, model, feat) {
     return {
       noBark: false,
-      model: !!y,
-      main: Object.assign({ key: ranked[0].key, pct: ranked[0].pct }, MEANINGS[ranked[0].key]),
-      others: ranked.slice(1).map(function (r) { return { key: r.key, pct: r.pct, title: MEANINGS[r.key].title }; }),
-      heard: heardText(f, y),
-      features: { count: f.count, pitch: Math.round(f.pitch), rate: +f.rate.toFixed(2), meanDur: +f.meanDur.toFixed(2) }
+      model: model,
+      main: ranked[0],
+      others: ranked.slice(1),
+      heard: heard,
+      features: feat
     };
   }
 
-  window.MungAnalyzer = { analyze: analyze, preload: loadModel, MEANINGS: MEANINGS };
+  function featSummary(f) { return { count: f.count, pitch: Math.round(f.pitch), rate: +f.rate.toFixed(2), meanDur: +f.meanDur.toFixed(2) }; }
+
+  async function analyze(blob, situation) {
+    var L = await listen(blob);
+    if (!L.bark) return { noBark: true, model: !!L.y };
+    var sig = merge(audioSignals(L.f, L.y), contextSignals(situation));
+    var ranked = window.BarkEmotions.rank(window.BarkEmotions.AUDIO, sig);
+    return pack(ranked, heardText(L.f, L.y), !!L.y, featSummary(L.f));
+  }
+
+  // 영상: 보호자가 고른 몸짓 + 상황 + (가능하면) 영상 속 소리
+  var AUDIO_TO_VIDEO = { alert: 'alert', threat: 'threat', want: 'want', play: 'play', fear: 'fear', body: 'body' };
+  async function analyzeVideo(blob, cues, situation) {
+    var E = window.BarkEmotions;
+    var sig = contextSignals(situation);
+    (cues || []).forEach(function (c) { sig[c] = 1; });
+    var boost = {}, heard = '영상 속 짖음은 들리지 않았어요', feat = null, model = false;
+    if (blob) {
+      try {
+        var L = await listen(blob);
+        model = !!L.y;
+        if (L.bark) {
+          var a = E.rank(E.AUDIO, merge(audioSignals(L.f, L.y), sig));
+          if (AUDIO_TO_VIDEO[a[0].group]) boost[AUDIO_TO_VIDEO[a[0].group]] = 1.5;
+          if (AUDIO_TO_VIDEO[a[1].group]) boost[AUDIO_TO_VIDEO[a[1].group]] = Math.max(boost[AUDIO_TO_VIDEO[a[1].group]] || 0, 0.8);
+          heard = heardText(L.f, L.y) + ' · 소리로는 "' + a[0].title + '"에 가까워요';
+          feat = featSummary(L.f);
+        }
+      } catch (e) {
+        console.warn('[BarkTalk] 영상 소리를 읽지 못했어요', e);
+        heard = '영상 속 소리는 읽지 못해 몸짓만으로 분석했어요';
+      }
+    }
+    var ranked = E.rank(E.VIDEO, sig, boost);
+    return pack(ranked, heard, model, feat);
+  }
+
+  window.MungAnalyzer = { analyze: analyze, analyzeVideo: analyzeVideo, preload: loadModel };
 })();

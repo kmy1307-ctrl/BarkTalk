@@ -1,6 +1,6 @@
 // 오프라인 지원: 앱 파일은 미리 저장, 모델·라이브러리는 처음 받을 때 저장
-var CACHE = 'barktalk-v3';
-var APP = ['./', 'index.html', 'style.css', 'app.js', 'analyzer.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png'];
+var CACHE = 'barktalk-v4';
+var APP = ['./', 'index.html', 'style.css', 'app.js', 'emotions.js', 'analyzer.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(APP); }).then(function () { return self.skipWaiting(); }));

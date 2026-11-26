@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>BarkTalk</title>
-<meta name="description" content="강아지 짖음 소리로 기분을 추정해 주는 무료 앱">
+<meta name="description" content="강아지 짖음 소리와 영상으로 기분을 추정해 주는 무료 앱">
 <meta name="theme-color" content="#FFC83D">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -24,20 +24,26 @@
   <!-- 첫 화면 -->
   <section id="screen-home" class="screen">
     <h1>우리 강아지,<br>지금 뭐라고 짖는 걸까요?</h1>
-    <p class="sub">짖는 소리를 들려주면 기분과 원하는 것을 추정해 드려요. 분석은 내 폰 안에서만 이뤄져요.</p>
-    <button id="go-audio" class="big primary">
-      <span class="big-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg></span>
-      <span><strong>음성으로 빠르게</strong><small>짖음 소리만 듣고 몇 초 만에 분석</small></span>
-    </button>
-    <button class="big outline" disabled>
-      <span class="big-icon soft"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3z"/></svg></span>
-      <span><strong>영상으로 정밀하게</strong><small>준비 중 · 다음 업데이트</small></span>
-    </button>
+    <p class="sub">짖는 소리나 영상을 보여 주면 기분과 원하는 것을 추정해 드려요. 분석은 내 폰 안에서만 이뤄져요.</p>
+    <div class="mode">
+      <button id="go-audio" class="big primary">
+        <span class="big-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg></span>
+        <span><strong>음성으로 빠르게</strong><small>짖음 소리로 <b id="audio-count"></b>가지 표현을 추정</small></span>
+      </button>
+      <button class="info on-dark" data-list="audio" aria-label="음성으로 알 수 있는 표현 목록 보기"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5v.01"/></svg></button>
+    </div>
+    <div class="mode">
+      <button id="go-video" class="big outline">
+        <span class="big-icon soft"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3z"/></svg></span>
+        <span><strong>영상으로 정밀하게</strong><small>몸짓과 소리로 <b id="video-count"></b>가지 표현을 추정</small></span>
+      </button>
+      <button class="info" data-list="video" aria-label="영상으로 알 수 있는 표현 목록 보기"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5v.01"/></svg></button>
+    </div>
     <div class="card" id="history-card" hidden>
       <strong>최근 분석</strong>
       <ul id="history"></ul>
     </div>
-    <p class="fine">결과는 참고용 추정이에요. 짖음만으로 뜻을 정확히 알 수는 없어요.</p>
+    <p class="fine">결과는 참고용 추정이에요. 소리나 몸짓만으로 뜻을 정확히 알 수는 없어요.</p>
   </section>
 
   <!-- 업로드 -->
@@ -67,17 +73,51 @@
     <p id="error" class="error" role="alert" hidden></p>
   </section>
 
+  <!-- 영상 업로드 -->
+  <section id="screen-video" class="screen" hidden>
+    <span class="eyebrow">영상 정밀 분석</span>
+    <h2>강아지 모습을 찍어 주세요</h2>
+    <p class="sub">꼬리와 귀가 보이게, 짖는 소리도 함께 담기면 가장 좋아요.</p>
+    <div class="drop">
+      <video id="v-live" class="vid" playsinline muted hidden></video>
+      <div id="v-empty">
+        <button id="v-rec" class="rec" aria-label="녹화 시작">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3z"/></svg>
+        </button>
+        <span id="v-rec-label" class="rec-label">눌러서 녹화 (최대 15초)</span>
+        <label class="file-btn">영상 파일 고르기<input id="v-file" type="file" accept="video/*"></label>
+      </div>
+      <div id="v-ready" class="ready" hidden>
+        <span class="ok"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg></span>
+        <span class="grow"><strong id="v-name">녹화 완료</strong><small id="v-meta"></small></span>
+        <button id="v-clear" class="text-btn">다시</button>
+      </div>
+      <video id="v-player" class="vid" controls playsinline hidden></video>
+    </div>
+    <div class="cues-head">
+      <strong>영상에서 보인 모습을 골라 주세요</strong>
+      <small>여러 개 골라도 돼요. 많이 고를수록 정확해져요.</small>
+    </div>
+    <div id="cues" class="cues"></div>
+    <fieldset class="chips-wrap">
+      <legend>어떤 상황이었나요? <small>(선택)</small></legend>
+      <div class="chips" id="v-situations"></div>
+    </fieldset>
+    <button id="v-analyze" class="cta" disabled>분석하기</button>
+    <p id="v-error" class="error" role="alert" hidden></p>
+  </section>
+
   <!-- 분석 중 -->
   <section id="screen-analyzing" class="screen center" hidden>
     <div class="pulse"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 12h2"/><path d="M7 8v8"/><path d="M11 5v14"/><path d="M15 9v6"/><path d="M19 7v10"/></svg></div>
-    <h2>짖음 소리를 듣는 중</h2>
+    <h2 id="analyzing-title">짖음 소리를 듣는 중</h2>
     <p class="sub" id="analyzing-step">음높이, 짖는 간격, 반복 횟수를 살펴보고 있어요. 소리는 폰 밖으로 나가지 않아요.</p>
   </section>
 
   <!-- 결과 -->
   <section id="screen-result" class="screen" hidden>
     <div class="card">
-      <span class="eyebrow">음성 빠른 분석 결과</span>
+      <span class="eyebrow" id="r-eyebrow">음성 빠른 분석 결과</span>
       <div class="result-head"><h2 id="r-title"></h2><span id="r-pct" class="pct"></span></div>
       <p id="r-desc" class="sub"></p>
       <div class="bar"><div id="r-bar"></div></div>
@@ -98,7 +138,32 @@
   </section>
 </main>
 
+<!-- 음성 선택 시 안내 팝업 -->
+<div id="tip-modal" class="overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="tip-title">
+    <span class="modal-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3z"/></svg></span>
+    <h3 id="tip-title">영상으로 찍으면 더 정확해요</h3>
+    <p class="sub">음성은 짖는 소리만 들을 수 있어요. 영상은 꼬리, 귀, 자세까지 함께 봐서 더 정확하고 다양한 감정(<b id="tip-video-count"></b>가지)을 알려 드려요.</p>
+    <label class="check"><input type="checkbox" id="tip-skip"> 다음부터 보지 않기</label>
+    <button id="tip-ok" class="cta dark">확인 · 음성으로 할게요</button>
+    <button id="tip-video" class="cta">영상녹화로 시작하기</button>
+  </div>
+</div>
+
+<!-- 표현 목록 시트 -->
+<div id="list-modal" class="overlay sheet-wrap" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="list-title">
+    <div class="sheet-head">
+      <div><span class="eyebrow" id="list-eyebrow"></span><h3 id="list-title"></h3></div>
+      <button id="list-close" class="icon-btn" aria-label="닫기"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <p class="sub" id="list-sub"></p>
+    <div id="list-body" class="list-body"></div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js" defer></script>
+<script src="emotions.js" defer></script>
 <script src="analyzer.js" defer></script>
 <script src="app.js" defer></script>
 </body>
